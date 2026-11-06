@@ -10,6 +10,8 @@ BASE_URL = "http://localhost:1234/v1"
 MODEL = "google/gemma-4-e4b"
 MAX_STEPS = 8
 MAX_FILE_CHARS = 4000
+MAX_SEARCH_RESULTS = 50
+MAX_SEARCH_FILE_BYTES = 1_000_000
 
 
 def list_files(path):
@@ -28,11 +30,34 @@ def read_file(path):
         return f.read(MAX_FILE_CHARS)
 
 
+def search_files(path, query):
+    root = os.path.expanduser(path)
+    needle = query.lower()
+    hits = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            try:
+                if os.path.getsize(full) > MAX_SEARCH_FILE_BYTES:
+                    continue
+                with open(full, "r", errors="strict") as f:
+                    for lineno, line in enumerate(f, 1):
+                        if needle in line.lower():
+                            hits.append(f"{full}:{lineno}: {line.strip()[:200]}")
+                            if len(hits) >= MAX_SEARCH_RESULTS:
+                                return "\n".join(hits)
+            except (OSError, UnicodeDecodeError):
+                continue  # skip unreadable and binary files
+    return "\n".join(hits) or "(no matches)"
+
+
 def get_time():
     return datetime.now().isoformat(timespec="seconds")
 
 
-TOOLS = {"list_files": list_files, "read_file": read_file, "get_time": get_time}
+TOOLS = {"list_files": list_files, "read_file": read_file,
+         "search_files": search_files, "get_time": get_time}
 
 TOOL_SPECS = [
     {"type": "function", "function": {
@@ -47,6 +72,14 @@ TOOL_SPECS = [
         "parameters": {"type": "object",
                        "properties": {"path": {"type": "string"}},
                        "required": ["path"]}}},
+    {"type": "function", "function": {
+        "name": "search_files",
+        "description": "Case-insensitive text search through files under a directory "
+                       "(recursive, skips hidden folders). Returns path:line: text.",
+        "parameters": {"type": "object",
+                       "properties": {"path": {"type": "string"},
+                                      "query": {"type": "string"}},
+                       "required": ["path", "query"]}}},
     {"type": "function", "function": {
         "name": "get_time",
         "description": "Get the current local date and time.",

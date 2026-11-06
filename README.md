@@ -29,6 +29,7 @@ to stdout.
 | --- | --- |
 | `list_files(path)` | List up to 100 entries in a directory |
 | `read_file(path)` | Read the first 4000 characters of a text file |
+| `search_files(path, query)` | Case-insensitive text search under a directory (max 50 matches, skips hidden folders, binary and >1 MB files) |
 | `get_time()` | Current local date and time |
 
 All tools are read-only. To add one, write a function, register it in `TOOLS`,
