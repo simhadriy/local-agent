@@ -30,9 +30,11 @@ to stdout.
 | `list_files(path)` | List up to 100 entries in a directory |
 | `read_file(path)` | Read the first 4000 characters of a text file |
 | `search_files(path, query)` | Case-insensitive text search under a directory (max 50 matches, skips hidden folders, binary and >1 MB files) |
+| `run_command(command)` | Run one allowlisted read-only command: `ls pwd date uname whoami wc head tail cat file du df`, plus `git status/log/diff/branch/show`. No shell, 10 s timeout, output capped at 4000 chars |
 | `get_time()` | Current local date and time |
 
-All tools are read-only. To add one, write a function, register it in `TOOLS`,
+All tools are read-only. `run_command` uses `subprocess` without a shell, so pipes,
+redirects and `;` do nothing, and anything off the allowlist is refused. To add one, write a function, register it in `TOOLS`,
 and describe it in `TOOL_SPECS`.
 
 ## Configuration

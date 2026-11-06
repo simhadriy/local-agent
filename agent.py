@@ -2,6 +2,8 @@
 """Minimal tool-calling agent against LM Studio's local OpenAI-compatible server."""
 import json
 import os
+import shlex
+import subprocess
 import sys
 import urllib.request
 from datetime import datetime
@@ -12,6 +14,11 @@ MAX_STEPS = 8
 MAX_FILE_CHARS = 4000
 MAX_SEARCH_RESULTS = 50
 MAX_SEARCH_FILE_BYTES = 1_000_000
+COMMAND_TIMEOUT = 10
+MAX_COMMAND_OUTPUT = 4000
+ALLOWED_COMMANDS = {"ls", "pwd", "date", "uname", "whoami", "wc", "head", "tail",
+                    "cat", "file", "du", "df", "git"}
+ALLOWED_GIT_SUBCOMMANDS = {"status", "log", "diff", "branch", "show"}
 
 
 def list_files(path):
@@ -52,12 +59,36 @@ def search_files(path, query):
     return "\n".join(hits) or "(no matches)"
 
 
+def run_command(command):
+    # No shell: the string is split into argv, so pipes, redirects and
+    # substitutions are inert text rather than operators.
+    argv = shlex.split(command)
+    if not argv:
+        return "error: empty command"
+    if argv[0] not in ALLOWED_COMMANDS:
+        return f"error: '{argv[0]}' is not allowed. Allowed: {sorted(ALLOWED_COMMANDS)}"
+    if argv[0] == "git":
+        if len(argv) < 2 or argv[1] not in ALLOWED_GIT_SUBCOMMANDS:
+            return f"error: only git {sorted(ALLOWED_GIT_SUBCOMMANDS)} are allowed"
+        if any(a.startswith("--output") for a in argv[2:]):
+            return "error: --output is not allowed"
+    argv = [os.path.expanduser(a) for a in argv]
+    try:
+        proc = subprocess.run(argv, capture_output=True, text=True,
+                              timeout=COMMAND_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return f"error: timed out after {COMMAND_TIMEOUT}s"
+    out = (proc.stdout + proc.stderr).strip() or "(no output)"
+    return out[:MAX_COMMAND_OUTPUT]
+
+
 def get_time():
     return datetime.now().isoformat(timespec="seconds")
 
 
 TOOLS = {"list_files": list_files, "read_file": read_file,
-         "search_files": search_files, "get_time": get_time}
+         "search_files": search_files, "run_command": run_command,
+         "get_time": get_time}
 
 TOOL_SPECS = [
     {"type": "function", "function": {
@@ -80,6 +111,15 @@ TOOL_SPECS = [
                        "properties": {"path": {"type": "string"},
                                       "query": {"type": "string"}},
                        "required": ["path", "query"]}}},
+    {"type": "function", "function": {
+        "name": "run_command",
+        "description": "Run one read-only command (no pipes or redirects). Allowed: "
+                       + ", ".join(sorted(ALLOWED_COMMANDS))
+                       + ". git is limited to: "
+                       + ", ".join(sorted(ALLOWED_GIT_SUBCOMMANDS)) + ".",
+        "parameters": {"type": "object",
+                       "properties": {"command": {"type": "string"}},
+                       "required": ["command"]}}},
     {"type": "function", "function": {
         "name": "get_time",
         "description": "Get the current local date and time.",
