@@ -136,17 +136,25 @@ def chat(messages):
         return json.load(resp)["choices"][0]["message"]
 
 
-def run(task):
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant with read-only "
-         "access to the user's files. Use tools when needed, then answer concisely."},
-        {"role": "user", "content": task},
-    ]
+SYSTEM_PROMPT = (
+    "You are a helpful assistant running on the user's Mac with read-only access "
+    "to their files. Answer general questions (programming, explanations, "
+    "tutorials) directly from your own knowledge. Use tools only when the "
+    "question is about the user's files or machine, then answer from the tool "
+    "results. Be concise, and ask a short follow-up question when it would help."
+)
+
+
+def run(task, messages):
+    """Run one user turn against the shared history; returns the final answer."""
+    messages.append({"role": "user", "content": task})
     for step in range(1, MAX_STEPS + 1):
         msg = chat(messages)
         calls = msg.get("tool_calls") or []
         if not calls:
-            return msg.get("content", "")
+            answer = msg.get("content", "")
+            messages.append({"role": "assistant", "content": answer})
+            return answer
         messages.append({"role": "assistant", "content": msg.get("content") or "",
                          "tool_calls": calls})
         for call in calls:
@@ -162,6 +170,30 @@ def run(task):
     return "(stopped: reached max steps)"
 
 
+def main():
+    args = sys.argv[1:]
+    once = "--once" in args
+    task = " ".join(a for a in args if a != "--once")
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    if task:
+        print(run(task, messages))
+        if once:
+            return
+    else:
+        print("Chat with the local agent. Type 'exit' or press Ctrl-D to quit.")
+
+    while True:
+        try:
+            task = input("\n> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+        if task.lower() in {"exit", "quit"}:
+            return
+        if task:
+            print(run(task, messages))
+
+
 if __name__ == "__main__":
-    task = " ".join(sys.argv[1:]) or "What time is it, and what is in my home folder?"
-    print(run(task))
+    main()

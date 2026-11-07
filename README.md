@@ -17,11 +17,14 @@ gives a final answer (max 8 steps).
 ## Usage
 
 ```
-python3 agent.py "What time is it, and what is in my home folder?"
+python3 agent.py                      # start a chat
+python3 agent.py "your first question"  # answer it, then keep chatting
+python3 agent.py --once "question"    # answer once and exit
 ```
 
-Tool calls are logged to stderr as `[step N] tool(args)`; the final answer goes
-to stdout.
+The conversation history is kept between turns, so follow-up questions work.
+Type `exit` or press Ctrl-D to quit. Tool calls are logged to stderr as
+`[step N] tool(args)`; answers go to stdout.
 
 ## Tools
 
