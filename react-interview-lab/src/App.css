@@ -164,7 +164,7 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 5;
+  z-index: 1;
   overflow: visible;
 }
 
@@ -195,7 +195,7 @@
 .demo-pane,
 .concepts-pane {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   min-width: 0;
 }
 
@@ -341,14 +341,19 @@
 
 .mark-done {
   display: inline-flex;
-  margin-top: 10px;
-  padding: 4px 10px;
+  margin-top: 12px;
+  padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid var(--stroke-strong);
-  background: transparent;
-  font-size: 0.75rem;
-  color: var(--paper-dim);
+  background: rgba(232, 220, 196, 0.06);
+  font-size: 0.8rem;
+  color: var(--paper);
   cursor: pointer;
+}
+
+.mark-done:hover {
+  border-color: rgba(45, 212, 168, 0.55);
+  background: var(--accent-dim);
 }
 
 .concept-card.is-done .mark-done {

@@ -44,7 +44,9 @@ export function ListsKeysDemo() {
         <Target id="id-list" className="list-col">
           {items.map((item, index) => (
             <label key={mode === 'id' ? item.id : index} className="list-row">
-              <span className="mono muted">{mode === 'id' ? item.id : index}</span>
+              <span className="mono muted" title={mode === 'id' ? 'stable key' : `using key={${index}}`}>
+                {item.id}
+              </span>
               <input defaultValue={item.text} />
             </label>
           ))}
